@@ -305,72 +305,14 @@ jobs:
       - name: 🔧 Set up SUSFS (配置 SUSFS)
         run: |
           cd kernel_workspace
-          if [ "${{ env.KSU_TYPE }}" == 'ReSukiSU' ]; then
-            git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android15-6.6
-            cd KernelSU 
-            git config --global user.email "qiudaoyu2888@gmail.com"
-            git config --global user.name "Q1udaoyu"
-            git revert e16cf610855b73fd248d9e3609cd993ec667de02
-            KSU_VERSION=$(expr $(git rev-list --count main) + 30700 2>/dev/null || echo 114514)
-            echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-            echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
-            cd ..
-            cd common
-            wget https://gitlab.com/simonpunk/susfs4ksu/-/raw/f77334c982f9970958b856665c4d26ddf75e8248/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch
-            cd ..
-          else
-            git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android15-6.6
-            cp ./susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common/
-            wget https://github.com/cctv18/oppo_oplus_realme_sm8750/raw/refs/heads/main/other_patch/69_hide_stuff.patch -O ./common/69_hide_stuff.patch
-            cd ./common
-            patch -p1 < 69_hide_stuff.patch || true
-            cd ..
-          fi
+          git clone --depth=1 https://github.com/cctv18/susfs4oki.git susfs4ksu -b oki-android15-6.6
+          wget https://raw.githubusercontent.com/cctv18/oppo_oplus_realme_sm8750/main/other_patch/69_hide_stuff.patch -O ./common/69_hide_stuff.patch
           cp ./susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common/
           cp ./susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ./susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
           cd ./common
           patch -p1 < 50_add_susfs_in_gki-android15-6.6.patch || true
-          cd ..
-          echo "[INFO] 检查 susfs_def.h 是否存在..."
-          if test -f common/include/linux/susfs_def.h; then
-            echo "[OK] 已找到 common/include/linux/susfs_def.h"
-          else
-            echo "[ERR] 未找到 susfs_def.h，终止执行"
-            exit 1
-          fi
-          BASE_C=common/fs/proc/base.c
-          echo "[INFO] 目标文件：$BASE_C"
-          echo "[INFO] 检查是否已包含 susfs_def.h ..."
-          if grep -q 'susfs_def.h' "$BASE_C"; then
-            echo "[SKIP] $BASE_C 中已包含 susfs_def.h"
-          else
-            echo "[INFO] 准备插入 susfs_def.h 引用..."
-            if grep -q '#include <linux/cpufreq_times.h>' "$BASE_C"; then
-              sed -i '/#include <linux\/cpufreq_times.h>/a \
-          \
-          #ifdef CONFIG_KSU_SUSFS_SUS_MAP\
-          #include <linux/susfs_def.h>\
-          #endif\
-          ' "$BASE_C"
-              echo "[OK] susfs_def.h 引用已插入"
-            else
-              echo "[ERR] 未找到 cpufreq_times.h include，无法插入 susfs_def.h"
-              exit 1
-            fi
-          fi
-          echo "[INFO] 清理可能存在的 patch 残留文件..."
-          rm -f common/fs/proc/base.c.rej
-          echo "[OK] 清理完成（如存在）"
-          echo "[INFO] 最终校验 susfs_def.h 插入结果："
-          if grep -n 'susfs_def.h' "$BASE_C"; then
-            echo "[OK] 最终校验通过"
-          else
-            echo "[ERR] 最终校验失败"
-            exit 1
-          fi
-          echo "[OK] SUSFS 补丁处理流程全部完成"
-
+          patch -p1 -N -F 3 < 69_hide_stuff.patch || true
 
 
           
